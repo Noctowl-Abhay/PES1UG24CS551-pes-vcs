@@ -100,21 +100,21 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     else if (type == OBJ_COMMIT) type_str = "commit";
     else return -1;
 
-    // Create header: "type size\0"
+    // 1. Create header: "type size\0"
     char header[64];
     int header_len = sprintf(header, "%s %zu", type_str, len) + 1;
 
-    // Combine header and data
+    // 2. Combine header and data
     size_t total_len = header_len + len;
     uint8_t *buffer = malloc(total_len);
     memcpy(buffer, header, header_len);
     memcpy(buffer + header_len, data, len);
 
-    // Compute hash using the provided helper
+    // 3. Compute hash using the provided helper
     compute_hash(buffer, total_len, id_out);
     
-    // For now, return the buffer for the next commit logic
-    free(buffer);
+    // 4. For now, return the buffer for the next commit logic
+    // free(buffer);  Now done towards the end
     
     // 5. Build the storage path (e.g., .pes/objects/a1/b2c3...)
     char path[512];
@@ -128,7 +128,37 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         *last_slash = '\0';
         mkdir(dir_path, 0755);
     }
-    return 0; 
+
+    // 7. Write atomically: Temp file -> Rename
+    char temp_path[512];
+    // Create temp file in the objects directory
+    snprintf(temp_path, sizeof(temp_path), "%s/tmp_XXXXXX", OBJECTS_DIR);
+    int fd = mkstemp(temp_path);
+    if (fd == -1) {
+        free(buffer);
+        return -1;
+    }
+
+    // Write the combined header + data
+    if (write(fd, buffer, total_len) != (ssize_t)total_len) {
+        close(fd);
+        unlink(temp_path);
+        free(buffer);
+        return -1;
+    }
+    
+    fsync(fd); // Force OS to flush to physical disk
+    close(fd);
+
+    // Atomic move from temp name to the hash-based name
+    if (rename(temp_path, path) != 0) {
+        unlink(temp_path);
+        free(buffer);
+        return -1;
+    }
+
+    free(buffer); // Now it's safe to free
+    return 0;
 }
 // Read an object from the store.
 //
