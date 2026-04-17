@@ -183,6 +183,13 @@ static int write_tree_recursive(Index *index, int start, int end, int depth, Obj
             i = next_group;
         }
     }
+    
+    void *tree_data;
+    size_t tree_len;
+    tree_serialize(&tree, &tree_data, &tree_len);
+    object_write(OBJ_TREE, tree_data, tree_len, id_out);
+    free(tree_data);
+    
     return 0;
 }
 
