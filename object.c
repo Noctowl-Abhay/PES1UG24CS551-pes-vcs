@@ -114,7 +114,20 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     compute_hash(buffer, total_len, id_out);
     
     // For now, return the buffer for the next commit logic
-    free(buffer); 
+    free(buffer);
+    
+    // 5. Build the storage path (e.g., .pes/objects/a1/b2c3...)
+    char path[512];
+    object_path(id_out, path, sizeof(path));
+
+    // 6. Ensure the shard directory exists (e.g., .pes/objects/a1)
+    char dir_path[512];
+    strncpy(dir_path, path, sizeof(dir_path));
+    char *last_slash = strrchr(dir_path, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+        mkdir(dir_path, 0755);
+    }
     return 0; 
 }
 // Read an object from the store.
