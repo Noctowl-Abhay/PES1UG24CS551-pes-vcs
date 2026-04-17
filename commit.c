@@ -197,38 +197,34 @@ int head_update(const ObjectID *new_commit) {
 int commit_create(const char *message, ObjectID *commit_id_out) {
     // TODO: Implement commit creation
     // (See Lab Appendix for logical steps)
-    
-    // 1. Load the index
-    Index index;
-    if (index_load(&index) != 0) return -1;
 
-    // 2. Create tree from index
+    // 1. Create tree from index
     ObjectID tree_id;
-    if (tree_from_index(&index, &tree_id) != 0) return -1;
+    if (tree_from_index(&tree_id) != 0) return -1;
     
-    // 3. Setup Commit struct
+    // 2. Setup Commit struct
     Commit commit;
     memset(&commit, 0, sizeof(Commit));
     commit.tree = tree_id;
 
-    // 4. Link Parent (if HEAD exists)
+    // 3. Link Parent
     if (head_read(&commit.parent) == 0) {
         commit.has_parent = 1;
     } else {
         commit.has_parent = 0;
     }
 
-    // 5. Assign Author and Timestamp
+    // 4. Assign Metadata
     strncpy(commit.author, pes_author(), sizeof(commit.author) - 1);
     commit.timestamp = (uint64_t)time(NULL);
     strncpy(commit.message, message, sizeof(commit.message) - 1);
     
-    // 6. Serialize to text format
+    // 5. Serialize
     void *buffer = NULL;
     size_t len = 0;
     if (commit_serialize(&commit, &buffer, &len) != 0) return -1;
 
-    // 7. Write commit object to disk
+    // 6. Write Object
     ObjectID commit_id;
     if (object_write(OBJ_COMMIT, buffer, len, &commit_id) != 0) {
         free(buffer);
@@ -236,7 +232,7 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     }
     free(buffer);
     
-    // 8. Atomic update of HEAD/Branch pointer
+    // 7. Update HEAD
     if (head_update(&commit_id) != 0) return -1;
 
     if (commit_id_out) {
@@ -245,4 +241,4 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
 
     return 0;
 }
-}
+
