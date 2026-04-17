@@ -161,8 +161,26 @@ static int write_tree_recursive(Index *index, int start, int end, int depth, Obj
             tree.count++;
             i++;
         } else {
-            // Subdirectory logic goes here in next commit
-            i++; 
+            char dirname[256];
+            get_first_component(rel_path, dirname);
+
+            // Group all entries belonging to this subdirectory
+            int next_group = i;
+            while (next_group < end) {
+                const char *p = index->entries[next_group].path;
+                for (int d = 0; d < depth; d++) p = strchr(p, '/') + 1;
+                if (strncmp(p, dirname, strlen(dirname)) != 0 || p[strlen(dirname)] != '/') break;
+                next_group++;
+            }
+
+            ObjectID sub_tree_id;
+            write_tree_recursive(index, i, next_group, depth + 1, &sub_tree_id);
+
+            tree.entries[tree.count].mode = MODE_DIR;
+            strcpy(tree.entries[tree.count].name, dirname);
+            memcpy(tree.entries[tree.count].hash.hash, sub_tree_id.hash, HASH_SIZE);
+            tree.count++;
+            i = next_group;
         }
     }
     return 0;
