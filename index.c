@@ -137,8 +137,31 @@ int index_status(const Index *index) {
 int index_load(Index *index) {
     // TODO: Implement index loading
     // (See Lab Appendix for logical steps)
-    (void)index;
-    return -1;
+    index->count = 0;
+    FILE *f = fopen(INDEX_FILE, "r");
+    if (!f) return 0; // File not existing is fine (new repo)
+
+    char line[1024];
+    while (fgets(line, sizeof(line), f) && index->count < MAX_INDEX_ENTRIES) {
+        IndexEntry *e = &index->entries[index->count];
+        char hash_hex[HASH_HEX_SIZE + 1];
+        
+        // Format: <mode> <hash> <mtime> <size> <path>
+        if (sscanf(line, "%o %64s %ld %zu ", &e->mode, hash_hex, &e->mtime, &e->size) >= 4) {
+            // Find where the path starts (after the 4th space)
+            char *path_ptr = line;
+            for (int i = 0; i < 4; i++) {
+                path_ptr = strchr(path_ptr, ' ') + 1;
+            }
+            // Remove newline
+            path_ptr[strcspn(path_ptr, "\n")] = 0;
+            strcpy(e->path, path_ptr);
+            hex_to_hash(hash_hex, &e->hash);
+            index->count++;
+        }
+    }
+    fclose(f);
+    return 0;
 }
 
 // Save the index to .pes/index atomically.
