@@ -142,6 +142,32 @@ static void get_first_component(const char *path, char *out) {
     }
 }
 
+static int write_tree_recursive(Index *index, int start, int end, int depth, ObjectID *id_out) {
+    Tree tree;
+    tree.count = 0;
+
+    for (int i = start; i < end; ) {
+        const char *rel_path = index->entries[i].path;
+        // Advance pointer to the current directory level
+        for (int d = 0; d < depth; d++) {
+            rel_path = strchr(rel_path, '/') + 1;
+        }
+
+        if (strchr(rel_path, '/') == NULL) {
+            // It's a file in the current level
+            tree.entries[tree.count].mode = index->entries[i].mode;
+            strcpy(tree.entries[tree.count].name, rel_path);
+            memcpy(tree.entries[tree.count].hash.hash, index->entries[i].hash.hash, HASH_SIZE);
+            tree.count++;
+            i++;
+        } else {
+            // Subdirectory logic goes here in next commit
+            i++; 
+        }
+    }
+    return 0;
+}
+
 int tree_from_index(ObjectID *id_out) {
     // TODO: Implement recursive tree building
     
