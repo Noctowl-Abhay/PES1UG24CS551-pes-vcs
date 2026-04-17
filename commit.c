@@ -206,7 +206,20 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     ObjectID tree_id;
     if (tree_from_index(&index, &tree_id) != 0) return -1;
     
-    // ... logic continues ...
-    (void)message; (void)commit_id_out;
-    return -1;
+    // 3. Setup Commit struct
+    Commit commit;
+    memset(&commit, 0, sizeof(Commit));
+    commit.tree = tree_id;
+
+    // 4. Link Parent (if HEAD exists)
+    if (head_read(&commit.parent) == 0) {
+        commit.has_parent = 1;
+    } else {
+        commit.has_parent = 0;
+    }
+
+    // 5. Assign Author and Timestamp
+    strncpy(commit.author, pes_author(), sizeof(commit.author) - 1);
+    commit.timestamp = (uint64_t)time(NULL);
+    strncpy(commit.message, message, sizeof(commit.message) - 1);
 }
