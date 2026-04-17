@@ -17,6 +17,7 @@
 #include "commit.h"
 #include "index.h"
 #include "tree.h"
+#include "pes.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
