@@ -183,7 +183,36 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 // The caller is responsible for calling free(*data_out).
 // Returns 0 on success, -1 on error (file not found, corrupt, etc.).
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
-    // TODO: Implement
-    (void)id; (void)type_out; (void)data_out; (void)len_out;
-    return -1;
+    // 1. Build the file path
+    char path[512];
+    object_path(id, path, sizeof(path));
+
+    // 2. Open and read the file
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
+    fseek(f, 0, SEEK_END);
+    size_t total_len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    void *full_data = malloc(total_len);
+    if (!full_data) {
+        fclose(f);
+        return -1;
+    }
+    fread(full_data, 1, total_len, f);
+    fclose(f);
+
+    // 3. Verify integrity: recompute hash and compare
+    ObjectID actual_id;
+    compute_hash(full_data, total_len, &actual_id);
+    if (memcmp(id->hash, actual_id.hash, HASH_SIZE) != 0) {
+        free(full_data);
+        return -1; // Corruption detected!
+    }
+
+    // To be continued in Commit 5...
+    
+    free(full_data); 
+    return 0;
 }
