@@ -16,6 +16,8 @@
 // TODO functions:     index_load, index_save, index_add
 
 #include "index.h"
+#include "tree.h"   // Added to resolve get_file_mode
+#include "pes.h"    // Added to resolve object_write
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -147,7 +149,7 @@ int index_load(Index *index) {
         char hash_hex[HASH_HEX_SIZE + 1];
         
         // Format: <mode> <hash> <mtime> <size> <path>
-        if (sscanf(line, "%o %64s %ld %zu ", &e->mode, hash_hex, &e->mtime, &e->size) >= 4) {
+        if (sscanf(line, "%o %64s %ld %zu ", &e->mode, hash_hex, &e->mtime_sec, &e->size) >= 4) {
             // Find where the path starts (after the 4th space)
             char *path_ptr = line;
             for (int i = 0; i < 4; i++) {
@@ -189,7 +191,7 @@ int index_save(const Index *index) {
         IndexEntry *e = &sorted.entries[i];
         char hex[HASH_HEX_SIZE + 1];
         hash_to_hex(&e->hash, hex);
-        fprintf(f, "%o %s %ld %zu %s\n", e->mode, hex, e->mtime, e->size, e->path);
+        fprintf(f, "%o %s %ld %zu %s\n", e->mode, hex, e->mtime_sec, e->size, e->path);
     }
 
     fflush(f);
@@ -226,20 +228,17 @@ int index_add(Index *index, const char *path) {
     }
     free(data);
     // Logic continues...
-    Index index;
-    index_load(&index);
-
-    int pos = index_find(&index, path);
-    if (pos == -1) {
-        if (index.count >= MAX_INDEX_ENTRIES) return -1;
-        pos = index.count++;
-        strcpy(index.entries[pos].path, path);
+    IndexEntry *e = index_find(index, path);
+    if (!e) {
+        if (index->count >= MAX_INDEX_ENTRIES) return -1;
+        e = &index->entries[index->count++];
+        strcpy(e->path, path);
     }
 
-    index.entries[pos].mode = get_file_mode(path);
-    index.entries[pos].mtime = st.st_mtime;
-    index.entries[pos].size = st.st_size;
-    memcpy(&index.entries[pos].hash, &blob_id, sizeof(ObjectID));
+    e->mode = get_file_mode(path);
+    e->mtime_sec = st.st_mtime; // Changed to mtime_sec
+    e->size = st.st_size;
+    memcpy(&e->hash, &blob_id, sizeof(ObjectID));
 
-    return index_save(&index);
+    return index_save(index);
 }
