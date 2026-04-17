@@ -226,6 +226,20 @@ int index_add(Index *index, const char *path) {
     }
     free(data);
     // Logic continues...
+    Index index;
+    index_load(&index);
 
-    return -1;
+    int pos = index_find(&index, path);
+    if (pos == -1) {
+        if (index.count >= MAX_INDEX_ENTRIES) return -1;
+        pos = index.count++;
+        strcpy(index.entries[pos].path, path);
+    }
+
+    index.entries[pos].mode = get_file_mode(path);
+    index.entries[pos].mtime = st.st_mtime;
+    index.entries[pos].size = st.st_size;
+    memcpy(&index.entries[pos].hash, &blob_id, sizeof(ObjectID));
+
+    return index_save(&index);
 }
