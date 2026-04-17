@@ -213,6 +213,35 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
 
     // To be continued in Commit 5...
     
-    free(full_data); 
+    // 4. Parse the header (format: "type size\0data")
+    char *header = (char *)full_data;
+    char *null_byte = memchr(header, '\0', total_len);
+    if (!null_byte) {
+        free(full_data);
+        return -1;
+    }
+
+    char type_str[16];
+    size_t data_size;
+    if (sscanf(header, "%s %zu", type_str, &data_size) != 2) {
+        free(full_data);
+        return -1;
+    }
+
+    // 5. Map type string to enum
+    if (strcmp(type_str, \"blob\") == 0) *type_out = OBJ_BLOB;
+    else if (strcmp(type_str, \"tree\") == 0) *type_out = OBJ_TREE;
+    else if (strcmp(type_str, \"commit\") == 0) *type_out = OBJ_COMMIT;
+
+    // 6. Allocate buffer for data portion only
+    *data_out = malloc(data_size);
+    if (!*data_out) {
+        free(full_data);
+        return -1;
+    }
+    memcpy(*data_out, null_byte + 1, data_size);
+    *len_out = data_size;
+
+    free(full_data);
     return 0;
 }
