@@ -222,4 +222,17 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     strncpy(commit.author, pes_author(), sizeof(commit.author) - 1);
     commit.timestamp = (uint64_t)time(NULL);
     strncpy(commit.message, message, sizeof(commit.message) - 1);
+    
+    // 6. Serialize to text format
+    void *buffer = NULL;
+    size_t len = 0;
+    if (commit_serialize(&commit, &buffer, &len) != 0) return -1;
+
+    // 7. Write commit object to disk
+    ObjectID commit_id;
+    if (object_write(OBJ_COMMIT, buffer, len, &commit_id) != 0) {
+        free(buffer);
+        return -1;
+    }
+    free(buffer);
 }
