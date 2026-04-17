@@ -200,7 +200,11 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         fclose(f);
         return -1;
     }
-    fread(full_data, 1, total_len, f);
+    if (fread(full_data, 1, total_len, f) != total_len) {
+        fclose(f);
+        free(full_data);
+        return -1;
+    }
     fclose(f);
 
     // 3. Verify integrity: recompute hash and compare
@@ -211,8 +215,6 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1; // Corruption detected!
     }
 
-    // To be continued in Commit 5...
-    
     // 4. Parse the header (format: "type size\0data")
     char *header = (char *)full_data;
     char *null_byte = memchr(header, '\0', total_len);
@@ -228,10 +230,14 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1;
     }
 
-    // 5. Map type string to enum
-    if (strcmp(type_str, \"blob\") == 0) *type_out = OBJ_BLOB;
-    else if (strcmp(type_str, \"tree\") == 0) *type_out = OBJ_TREE;
-    else if (strcmp(type_str, \"commit\") == 0) *type_out = OBJ_COMMIT;
+    // 5. Map type string to enum (Note: No backslashes here!)
+    if (strcmp(type_str, "blob") == 0) *type_out = OBJ_BLOB;
+    else if (strcmp(type_str, "tree") == 0) *type_out = OBJ_TREE;
+    else if (strcmp(type_str, "commit") == 0) *type_out = OBJ_COMMIT;
+    else {
+        free(full_data);
+        return -1;
+    }
 
     // 6. Allocate buffer for data portion only
     *data_out = malloc(data_size);
@@ -239,6 +245,8 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         free(full_data);
         return -1;
     }
+    
+    // Copy data (skipping the header and the null terminator)
     memcpy(*data_out, null_byte + 1, data_size);
     *len_out = data_size;
 
