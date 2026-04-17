@@ -197,6 +197,16 @@ int head_update(const ObjectID *new_commit) {
 int commit_create(const char *message, ObjectID *commit_id_out) {
     // TODO: Implement commit creation
     // (See Lab Appendix for logical steps)
+    
+    // 1. Load the index
+    Index index;
+    if (index_load(&index) != 0) return -1;
+
+    // 2. Create tree from index
+    ObjectID tree_id;
+    if (tree_from_index(&index, &tree_id) != 0) return -1;
+    
+    // ... logic continues ...
     (void)message; (void)commit_id_out;
     return -1;
 }
