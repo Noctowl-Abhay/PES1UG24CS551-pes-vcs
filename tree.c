@@ -78,16 +78,9 @@ int tree_parse(const void *data, size_t len, Tree *tree_out) {
     return 0;
 }
 
-// Helper: Gets the first component of a path (e.g., "src" from "src/main.c")
-static void get_first_component(const char *path, char *out) {
-    char *slash = strchr(path, '/');
-    if (slash) {
-        size_t len = slash - path;
-        strncpy(out, path, len);
-        out[len] = '\0';
-    } else {
-        strcpy(out, path);
-    }
+// Helper for qsort to ensure consistent tree hashing
+static int compare_tree_entries(const void *a, const void *b) {
+    return strcmp(((const TreeEntry *)a)->name, ((const TreeEntry *)b)->name);
 }
 
 // Serialize a Tree struct into binary format for storage.
@@ -136,8 +129,22 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //   - object_write    : save that binary buffer to the store as OBJ_TREE
 //
 // Returns 0 on success, -1 on error.
+
+// Helper: Gets the first component of a path (e.g., "src" from "src/main.c")
+static void get_first_component(const char *path, char *out) {
+    const char *slash = strchr(path, '/');
+    if (slash) {
+        size_t len = slash - path;
+        strncpy(out, path, len);
+        out[len] = '\0';
+    } else {
+        strcpy(out, path);
+    }
+}
+
 int tree_from_index(ObjectID *id_out) {
     // TODO: Implement recursive tree building
+    
     // (See Lab Appendix for logical steps)
     (void)id_out;
     return -1;
